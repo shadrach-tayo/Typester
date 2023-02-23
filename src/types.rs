@@ -1,1 +1,3 @@
-type NumberAlias = i32;
+type NumberAlias = number;
+type BoolAlias = bool;
+type StringAlias = str;
