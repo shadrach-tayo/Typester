@@ -42,6 +42,8 @@ fn main() {
 
     let mut output_text = String::new();
 
+    output_text.push_str(&create_initial_types());
+
     for item in input_syntax.items.iter() {
         match item {
             syn::Item::Type(item_type) => {
@@ -66,6 +68,21 @@ fn main() {
     // dbg!(&output_text);
     let mut output_file = File::create(output_filename).unwrap();
     write!(output_file, "{}", output_text).expect("Failed to write to output file");
+}
+
+/// Initialize some Typescript equivalents of
+/// core Rust types like Result, Option, etc
+fn create_initial_types() -> String {
+    let mut output_text = String::new();
+
+    output_text
+        .push_str("type HashSet<T extends number | string> = Record<T, undefined>;");
+    output_text.push_str("type HashMap<T extends number | string, U> = Record<T, U>;");
+    output_text.push_str("type Vec<T> = Array<T>;");
+    output_text.push_str("type Option<T> = T | undefined;");
+    output_text.push_str("type Result<T, U> = T | U;");
+
+    output_text
 }
 
 /// Converts a Rust item type to a Typescript type
