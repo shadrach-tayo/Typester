@@ -50,13 +50,18 @@ fn main() {
                 output_text.push_str("\n");
             }
             syn::Item::Enum(item_enum) => {
-                let output = parse_item_enum(item_enum);
-                output_text.push_str(&output);
+                let enum_text = parse_item_enum(item_enum);
+                output_text.push_str(&enum_text);
+            }
+            syn::Item::Struct(item_struct) => {
+                let struct_text = parse_item_struct(item_struct);
+                output_text.push_str(&struct_text);
             }
             _ => {
                 dbg!("Encountered an unimplemented type {}", item);
             }
         }
+        output_text.push_str("\n");
     }
     // dbg!(&output_text);
     let mut output_file = File::create(output_filename).unwrap();
@@ -104,7 +109,6 @@ fn parse_type(syn_type: &syn::Type) -> String {
 
             let field_type = segment.ident.to_string();
             let ts_field_type = parse_type_ident(&field_type);
-            println!("Ts type ident {ts_field_type}");
             output.push_str(&ts_field_type.to_owned());
 
             match &segment.arguments {
@@ -160,7 +164,7 @@ fn parse_item_enum(item_enum: &syn::ItemEnum) -> String {
         // https://serde.rs/enum-representations.html#adjacently-tagged
         // As an improvement on this implementation you could parse the attribute
         // and handle the enum differently depending on which attribute the user chose
-        
+
         let variant_name = &variant.ident.to_string();
         output.push_str("| { t: \"");
         output.push_str(&variant_name);
@@ -207,7 +211,52 @@ fn parse_item_enum(item_enum: &syn::ItemEnum) -> String {
             }
         }
 
-        output.push_str("}")
+        output.push_str(" } ")
     }
+
+    output
+}
+
+fn parse_item_struct(item_struct: &syn::ItemStruct) -> String {
+    let mut output = String::new();
+    let struct_name = item_struct.ident.to_string();
+
+    output.push_str("export interface ");
+    output.push_str(&struct_name);
+    output.push_str(" { \n");
+
+    match &item_struct.fields {
+        syn::Fields::Named(named_fields) => {
+            for named_field in named_fields.named.iter() {
+                match &named_field.ident {
+                    Some(ident) => {
+                        let field_name = ident.to_string();
+                        output.push_str(&field_name);
+                        output.push_str(": ");
+                    }
+                    None => todo!(),
+                }
+                let field_type = parse_type(&named_field.ty);
+                output.push_str(&field_type);
+                output.push_str("; \n")
+            }
+        }
+
+        // For tuple structs we will serialize them as interfaces with
+        // fields named for the numerical index to align with serde's
+        // default handling of this type
+        syn::Fields::Unnamed(fields) => {
+            for (index, field) in fields.unnamed.iter().enumerate() {
+                output.push_str(&index.to_string());
+                output.push_str(":");
+                output.push_str(&parse_type(&field.ty));
+                output.push_str("; \n");
+            }
+        }
+        syn::Fields::Unit => (),
+    };
+
+    output.push_str("}");
+
     output
 }
