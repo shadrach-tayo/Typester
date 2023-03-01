@@ -214,21 +214,6 @@ fn parse_item_enum(item_enum: &syn::ItemEnum) -> String {
         output.push_str(&variant_name);
         output.push_str("\" , content: ");
 
-        // let item_type = &variant.fields.iter().last().unwrap().ty;
-        // match item_type {
-        //     syn::Type::Path(type_path) => {
-        //         let segment = type_path.path.segments.last().unwrap();
-
-        //         let type_ident = segment.ident.to_string();
-        //         let type_ident = parse_type_ident(&type_ident);
-        //         output.push_str(type_ident);
-        //     }
-        //     _ => {
-        //         output.push_str("any");
-        //         dbg!("Encountered invalid enum type path");
-        //     }
-        // };
-
         match &variant.fields {
             syn::Fields::Named(named_fields) => {
                 output.push_str("{");
