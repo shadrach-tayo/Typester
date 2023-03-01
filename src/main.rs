@@ -226,6 +226,23 @@ fn parse_item_enum(item_enum: &syn::ItemEnum) -> String {
     output
 }
 
+/// Converts a Rust struct to a Typescript interface
+///
+/// ## Examples
+///
+/// **Input:**
+/// struct Person {
+///     name: String,
+///     age: u32,
+///     enjoys_coffee: bool,
+/// }
+///
+/// **Output:**
+/// export interface Person {
+///     name: string;
+///     age: number;
+///     enjoys_coffee: boolean;
+/// }
 fn parse_item_struct(item_struct: &syn::ItemStruct) -> String {
     let mut output = String::new();
     let struct_name = item_struct.ident.to_string();
