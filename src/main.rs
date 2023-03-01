@@ -44,12 +44,42 @@ fn main() {
 
     output_text.push_str(&create_initial_types());
 
+    // for item in input_syntax.items.iter() {
+    //     match item {
+    //         syn::Item::Type(item_type) => {
+    //             let type_text = parse_item_type(item_type);
+    //             output_text.push_str(&type_text);
+    //             output_text.push_str("\n");
+    //         }
+    //         syn::Item::Enum(item_enum) => {
+    //             let enum_text = parse_item_enum(item_enum);
+    //             output_text.push_str(&enum_text);
+    //         }
+    //         syn::Item::Struct(item_struct) => {
+    //             let struct_text = parse_item_struct(item_struct);
+    //             output_text.push_str(&struct_text);
+    //         }
+    //         _ => {
+    //             dbg!("Encountered an unimplemented type {}", item);
+    //         }
+    //     }
+    //     output_text.push_str("\n");
+    // }
+    output_text.push_str(&parse_syn_file(input_syntax));
+    // dbg!(&output_text);
+    let mut output_file = File::create(output_filename).unwrap();
+    write!(output_file, "{}", output_text).expect("Failed to write to output file");
+}
+
+fn parse_syn_file(input_syntax: syn::File) -> String {
+    let mut output_text = String::new();
+
     for item in input_syntax.items.iter() {
         match item {
             syn::Item::Type(item_type) => {
                 let type_text = parse_item_type(item_type);
                 output_text.push_str(&type_text);
-                output_text.push_str("\n");
+                // output_text.push_str("\n");
             }
             syn::Item::Enum(item_enum) => {
                 let enum_text = parse_item_enum(item_enum);
@@ -63,11 +93,9 @@ fn main() {
                 dbg!("Encountered an unimplemented type {}", item);
             }
         }
-        output_text.push_str("\n");
+        // output_text.push_str("\n");
     }
-    // dbg!(&output_text);
-    let mut output_file = File::create(output_filename).unwrap();
-    write!(output_file, "{}", output_text).expect("Failed to write to output file");
+    output_text
 }
 
 /// Initialize some Typescript equivalents of
@@ -212,7 +240,7 @@ fn parse_item_enum(item_enum: &syn::ItemEnum) -> String {
         let variant_name = &variant.ident.to_string();
         output.push_str("| { t: \"");
         output.push_str(&variant_name);
-        output.push_str("\" , content: ");
+        output.push_str("\" , c: ");
 
         match &variant.fields {
             syn::Fields::Named(named_fields) => {
@@ -240,9 +268,10 @@ fn parse_item_enum(item_enum: &syn::ItemEnum) -> String {
             }
         }
 
-        output.push_str(" } ")
+        output.push_str("} ")
     }
-
+    output = output.as_str().trim().to_string();
+    output.push_str(";");
     output
 }
 
@@ -269,7 +298,7 @@ fn parse_item_struct(item_struct: &syn::ItemStruct) -> String {
 
     output.push_str("export interface ");
     output.push_str(&struct_name);
-    output.push_str(" { \n");
+    output.push_str(" {");
 
     match &item_struct.fields {
         syn::Fields::Named(named_fields) => {
@@ -278,13 +307,13 @@ fn parse_item_struct(item_struct: &syn::ItemStruct) -> String {
                     Some(ident) => {
                         let field_name = ident.to_string();
                         output.push_str(&field_name);
-                        output.push_str(": ");
+                        output.push_str(":");
                     }
                     None => todo!(),
                 }
                 let field_type = parse_type(&named_field.ty);
                 output.push_str(&field_type);
-                output.push_str("; \n")
+                output.push_str(";")
             }
         }
 
@@ -296,13 +325,73 @@ fn parse_item_struct(item_struct: &syn::ItemStruct) -> String {
                 output.push_str(&index.to_string());
                 output.push_str(":");
                 output.push_str(&parse_type(&field.ty));
-                output.push_str("; \n");
+                output.push_str(";");
             }
         }
         syn::Fields::Unit => (),
     };
 
-    output.push_str("}");
+    output.push_str("};");
 
     output
+}
+
+
+#[cfg(test)]
+mod tests {
+
+    use std::io::Read;
+
+    use super::*;
+
+    #[test]
+    fn handles_type_alias() {
+        let mut input_file = File::open("./src/tests/type.rs").unwrap();
+        let mut input_file_text = String::new();
+
+        input_file.read_to_string(&mut input_file_text).expect("Unable to read file"); //.read_to_string(&mut input_file_text).unwrap();
+
+        let input_syntax: syn::File = syn::parse_file(&input_file_text).expect("Unable to parse file");
+        let ts_types = parse_syn_file(input_syntax);
+
+        assert_eq!(r#"export type NumberAlias = number;"#, &ts_types);
+    }
+
+    #[test]
+    fn handles_struct() {
+        let mut input_file = File::open("./src/tests/struct.rs").unwrap();
+
+        let mut input_file_text = String::new();
+
+        input_file.read_to_string(&mut input_file_text).unwrap();
+
+        let input_syntax: syn::File =
+            syn::parse_file(&input_file_text).expect("Unable to parse file");
+
+        let typescript_types = parse_syn_file(input_syntax);
+
+        assert_eq!(
+            r#"export interface Person {name:string;age:number;enjoys_coffee:boolean;};"#,
+            &typescript_types
+        );
+    }
+
+    #[test]
+    fn handles_enum() {
+        let mut input_file = File::open("./src/tests/enum.rs").unwrap();
+
+        let mut input_file_text = String::new();
+
+        input_file.read_to_string(&mut input_file_text).unwrap();
+
+        let input_syntax: syn::File =
+            syn::parse_file(&input_file_text).expect("Unable to parse file");
+
+        let typescript_types = parse_syn_file(input_syntax);
+
+        assert_eq!(
+            r#"export type Colour = | { t: "Red" , c: number} | { t: "Green" , c: number} | { t: "Blue" , c: number};"#,
+            &typescript_types
+        );
+    }
 }
