@@ -18,3 +18,9 @@ export interface Person {
   age: number;
   enjoys_coffee: [number, string];
 }
+export interface ComplexType {
+  colour_map: HashMap<string, Colour>;
+  list_of_names: Vec<string>;
+  optional_person: Option<Person>;
+  weight_tuple: [number, number, number];
+}

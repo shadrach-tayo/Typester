@@ -75,8 +75,7 @@ fn main() {
 fn create_initial_types() -> String {
     let mut output_text = String::new();
 
-    output_text
-        .push_str("type HashSet<T extends number | string> = Record<T, undefined>;");
+    output_text.push_str("type HashSet<T extends number | string> = Record<T, undefined>;");
     output_text.push_str("type HashMap<T extends number | string, U> = Record<T, U>;");
     output_text.push_str("type Vec<T> = Array<T>;");
     output_text.push_str("type Option<T> = T | undefined;");
@@ -130,20 +129,39 @@ fn parse_type(syn_type: &syn::Type) -> String {
 
             match &segment.arguments {
                 syn::PathArguments::None => {}
-                
+                syn::PathArguments::AngleBracketed(arguments) => {
+                    output.push_str("<");
+                    for (index, arg) in arguments.args.iter().enumerate() {
+                        match &arg {
+                            syn::GenericArgument::Type(sub_type) => {
+                                output.push_str(&parse_type(sub_type));
+                            }
+                            _ => {
+                                dbg!("Unknow AngleBrackets type");
+                            }
+                        }
+                        if index < arguments.args.len() - 1 {
+                            output.push_str(",")
+                        }
+                    }
+                    output.push_str(">");
+                }
                 _ => {
                     dbg!("Field type arguments token not implemented");
+                    println!("arguments {:?}", type_path);
                 }
             }
         }
         syn::Type::Tuple(tuple_type) => {
-                    output.push_str("[");
-                    for elem in tuple_type.elems.iter() {
-                        output.push_str(&parse_type(&elem));
-                        output.push_str(",");
-                    }
-                    output.push_str("]");
+            output.push_str("[");
+            for (index, elem) in tuple_type.elems.iter().enumerate() {
+                output.push_str(&parse_type(&elem));
+                if index < tuple_type.elems.len() - 1 {
+                    output.push_str(",")
                 }
+            }
+            output.push_str("]");
+        }
         _ => {
             dbg!("parse_type::=> Encountered an unimplemented token");
         }
