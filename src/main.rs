@@ -49,8 +49,12 @@ fn main() {
                 output_text.push_str(&type_text);
                 output_text.push_str("\n");
             }
+            syn::Item::Enum(item_enum) => {
+                let output = parse_item_enum(item_enum);
+                output_text.push_str(&output);
+            }
             _ => {
-                dbg!("Encountered an unimplemented type");
+                dbg!("Encountered an unimplemented type {}", item);
             }
         }
     }
@@ -110,29 +114,6 @@ fn parse_type(syn_type: &syn::Type) -> String {
                 }
             }
         }
-        // syn::Type::Reference(type_referece) => {
-        //     // let ref_el = type_referece.elem;
-        //     match *type_referece.elem {
-        //         syn::Type::Path(type_path) => {
-        //             let segment = type_path.path.segments.last().unwrap();
-
-        //             let field_type = segment.ident.to_string();
-        //             let ts_field_type = parse_type_ident(&field_type);
-        //             println!("Ts type ident {ts_field_type}");
-        //             output.push_str(&ts_field_type.to_owned());
-
-        //             match &segment.arguments {
-        //                 syn::PathArguments::None => {}
-        //                 _ => {
-        //                     dbg!("Reference Type Field type arguments token not implemented");
-        //                 }
-        //             }
-        //         }
-        //         _ => {
-        //             dbg!("Unknown Reference path ");
-        //         }
-        //     }
-        // }
         _ => {
             dbg!("parse_type::=> Encountered an unimplemented token");
         }
@@ -148,4 +129,85 @@ fn parse_type_ident(ident: &str) -> &str {
         "bool" => "boolean",
         _ => ident,
     }
+}
+
+/// Converts a Rust enum to a Typescript type
+///
+/// ## Examples
+///
+/// **Input:**
+/// enum Colour {
+///     Red(i32, i32),
+///     Green(i32),
+///     Blue(i32),
+/// }
+///
+/// **Output:**
+/// export type Colour =
+///   | { t: "Red"; c: number }
+///   | { t: "Green"; c: number }
+///   | { t: "Blue"; c: number };
+fn parse_item_enum(item_enum: &syn::ItemEnum) -> String {
+    let mut output = String::new();
+    output.push_str("export type ");
+    output.push_str(&item_enum.ident.to_string());
+    output.push_str(" = ");
+
+    for variant in item_enum.variants.iter() {
+        // For simplicity this implementation we are using assumes that enums will be
+        // using serde's "Adjacently Tagged" attribute
+        // #[serde(tag = "t", content = "c")]
+        // https://serde.rs/enum-representations.html#adjacently-tagged
+        // As an improvement on this implementation you could parse the attribute
+        // and handle the enum differently depending on which attribute the user chose
+        
+        let variant_name = &variant.ident.to_string();
+        output.push_str("| { t: \"");
+        output.push_str(&variant_name);
+        output.push_str("\" , content: ");
+
+        // let item_type = &variant.fields.iter().last().unwrap().ty;
+        // match item_type {
+        //     syn::Type::Path(type_path) => {
+        //         let segment = type_path.path.segments.last().unwrap();
+
+        //         let type_ident = segment.ident.to_string();
+        //         let type_ident = parse_type_ident(&type_ident);
+        //         output.push_str(type_ident);
+        //     }
+        //     _ => {
+        //         output.push_str("any");
+        //         dbg!("Encountered invalid enum type path");
+        //     }
+        // };
+
+        match &variant.fields {
+            syn::Fields::Named(named_fields) => {
+                output.push_str("{");
+                for field in named_fields.named.iter() {
+                    if let Some(ident) = &field.ident {
+                        output.push_str(&ident.to_string());
+                        output.push_str(":");
+
+                        let field_type = parse_type(&field.ty);
+                        output.push_str(&field_type);
+                        output.push_str(";");
+                    }
+                }
+                output.push_str("}");
+            }
+            syn::Fields::Unnamed(unnamed_fields) => {
+                // Currently only support a single unnamed field: e.g the i32 in Blue(i32)
+                let unnamed_field = unnamed_fields.unnamed.last().unwrap();
+                let field_type = parse_type(&unnamed_field.ty);
+                output.push_str(&field_type);
+            }
+            syn::Fields::Unit => {
+                output.push_str("undefined");
+            }
+        }
+
+        output.push_str("}")
+    }
+    output
 }
