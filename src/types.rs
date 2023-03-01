@@ -6,11 +6,11 @@ type StringAlias = str;
 enum Colour {
     Red(i32),
     Green(i32),
-    Blue(i32),
+    Blue((i32, str)),
 }
 
 struct Person {
   name: String,
   age: u32,
-  enjoys_coffee: bool,
+  enjoys_coffee: (i32, str),
 }

@@ -113,11 +113,20 @@ fn parse_type(syn_type: &syn::Type) -> String {
 
             match &segment.arguments {
                 syn::PathArguments::None => {}
+                
                 _ => {
                     dbg!("Field type arguments token not implemented");
                 }
             }
         }
+        syn::Type::Tuple(tuple_type) => {
+                    output.push_str("[");
+                    for elem in tuple_type.elems.iter() {
+                        output.push_str(&parse_type(&elem));
+                        output.push_str(",");
+                    }
+                    output.push_str("]");
+                }
         _ => {
             dbg!("parse_type::=> Encountered an unimplemented token");
         }
