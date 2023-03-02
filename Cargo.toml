@@ -2,6 +2,8 @@
 name = "typester"
 version = "0.1.0"
 edition = "2021"
+description = "A mini library for converting rust types to typescript."
+license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
